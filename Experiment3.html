@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Lexical Decision Task</title>
+        <script src="https://unpkg.com/jspsych@8.2.1"></script>
+        <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@2.1.0"></script>
+        <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@2.1.0"></script>
+        <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
+        <link href="https://unpkg.com/jspsych@8.2.1/css/jspsych.css" rel="stylesheet" type="text/css" />
+    </head>
+    <body>
+    </body>
+    <script>
+        //initializes jsPsych and the timeline
+        var jsPsych = initJsPsych({
+            on_finish: function() {
+                jsPsych.data.displayData();
+            }
+        });
+        var timeline = [];
+
+        //defines the welcome message part of the trial
+        var welcome = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "Welcome to the experiment. Press any key to begin."
+        };
+        timeline.push(welcome);
+
+        //defines the instruction part of the trial
+        var instructions = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `
+                <p>In this experiment, a word will appear in the center 
+                of the screen.</p><p>If the word is real word, 
+                press the letter F on the keyboard as fast as you can.</p>
+                <p>If the word is not a real word, press the letter J 
+                as fast as you can.</p>
+                <div style='width: 700px;'>
+                <div style='float: left;'><h1>banana</h1>
+                <p class='small'><strong>Press the F key</strong></p></div>
+                <div style='float: right;'><h1>nabnaa</h1>
+                <p class='small'><strong>Press the J key</strong></p></div>
+                </div>
+                <p>Press any key to begin.</p>
+            `,
+            post_trial_gap: 2000
+        };
+        timeline.push(instructions);
+
+        //defines the different trials to place them in order
+        var test_stimuli = [
+            { stimulus: '<div style="font-size:60px;">banana</div>', correct_response: 'f'},
+            { stimulus: '<div style="font-size:60px;">nabnaa</div>', correct_response: 'j'},
+            { stimulus: '<div style="font-size:60px;">hello</div>', correct_response: 'f'},
+            { stimulus: '<div style="font-size:60px;">oellh</div>', correct_response: 'j'},
+            { stimulus: '<div style="font-size:60px;">rocket</div>', correct_response: 'f'},
+            { stimulus: '<div style="font-size:60px;">croekt</div>', correct_response: 'j'},
+            { stimulus: '<div style="font-size:60px;">exotic</div>', correct_response: 'f'},
+            { stimulus: '<div style="font-size:60px;">coxiet</div>', correct_response: 'j'},
+            { stimulus: '<div style="font-size:60px;">people</div>', correct_response: 'f'},
+            { stimulus: '<div style="font-size:60px;">ploeep</div>', correct_response: 'j'}
+        ];
+
+        //defines the fixation cross
+        var fixation = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: '<div style="font-size:60px;">+</div>',
+            choices: "NO_KEYS",
+            trial_duration: function(){
+                return jsPsych.randomization.sampleWithoutReplacement([250, 500, 750, 1000, 1250, 1500, 1750, 2000], 1)[0];
+            },
+            data: {
+                task: 'fixation'
+            }
+        };
+
+        //sets up a test stimulus
+        var test = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: jsPsych.timelineVariable('stimulus'),
+            choices: ['f', 'j'],
+            data: {
+                task: 'response',
+                correct_response: jsPsych.timelineVariable('correct_response')
+            },
+            on_finish: function(data){
+                data.correct = jsPsych.pluginAPI.compareKeys(data.response, data.correct_response);
+            }
+        }
+
+        //sets up a test section
+        var test_section = {
+            timeline: [fixation, test],
+            timeline_variables: test_stimuli,
+            randomize_order: true,
+            repetitions: 2
+        }
+
+        //sets up a rest section
+        var rest = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "This is a rest block. When you're ready, hit any key to continue."
+        }
+
+        //sets up a test procedure
+        var test_procedure = {
+            timeline: [test_section, rest, test_section],
+        }
+        timeline.push(test_procedure);
+
+        //starts the debrief block
+        var debrief_block = {
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: function() {
+
+                var trials = jsPsych.data.get().filter({task: 'response'});
+                var correct_trials = trials.filter({correct: true});
+                var correct_f = trials.filter({response: 'f'});
+                var correct_j = trials.filter({response: 'j'});
+                var accuracy = Math.round(correct_trials.count() / trials.count() * 100);
+                var rtf = Math.round(correct_f.select('rt').mean());
+                var rtj = Math.round(correct_j.select('rt').mean());
+
+                return `<p>You responded correctly on ${accuracy}% of the trials.</p>
+                <p>Your average response time for real words was ${rtf}ms.</p>
+                <p>Your average response time for non-real words was ${rtj}ms.</p>
+                <p>Press any key to complete the experiment. Thank you!</p>`;
+
+            }
+        };
+        timeline.push(debrief_block);
+
+        //start the experiment timeline
+        jsPsych.run(timeline);
+
+    </script>
+</html>
